@@ -68,6 +68,8 @@ screenshot-*.png        Capturas para el diálogo de instalación
 
 - 3.10: nuevo menú «Porcentaje por rango» (porcentaje mensual según el monto del préstamo) al crear un préstamo, con la tabla editable en Ajustes > «Porcentajes por monto». No cambia el esquema de datos (`VER` 4): se guarda en la configuración y los datos existentes se conservan. `sw.js` pasa a `cartera-v17`.
 
+- 3.11: nuevo tipo de interés «Sobre saldo, % distinto por cuota (manual)»: la cuota 1 usa el % del menú o el escrito, y desde la cuota 2 se digita el % de cada cuota (interés sobre el saldo restante, capital parejo). Se guarda en el préstamo como `metodo:'saldov'` y `pcts`; no cambia el esquema de datos (`VER` 4) y los datos existentes se conservan. `sw.js` pasa a `cartera-v18`.
+
 ## Interruptor remoto (estado.json)
 
 `estado.json` va en la raíz junto a `index.html`. Para bloquear la app: `{"activa": false, "mensaje": "Texto que verá el usuario"}`. Para reactivarla: `{"activa": true}`. Se consulta al abrir, al volver a la app y cada 5 minutos. Si el archivo no existe o no se puede leer, la app sigue funcionando. Aun bloqueada, el usuario puede exportar su respaldo. `sw.js` nunca guarda este archivo en caché.
