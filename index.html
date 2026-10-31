@@ -30,6 +30,7 @@ input,select,textarea{font:inherit;padding:9px 10px;border:1px solid var(--line)
 input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid var(--acc2);outline-offset:1px}
 .pct{border:2px solid var(--acc2);border-radius:10px;padding:8px;background:color-mix(in srgb,var(--acc2) 10%,transparent)}
 .pct span{color:var(--ink);font-weight:700}
+.trow{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr .7fr auto;gap:6px;align-items:center;margin-bottom:6px}.trow.h{font-size:12px;opacity:.75;margin-bottom:0}
 .btn{background:var(--acc);color:#fff;border:0;border-radius:8px;padding:10px 16px;font:inherit;font-weight:700;cursor:pointer}
 .btn.ghost{background:transparent;color:var(--acc);border:1px solid var(--acc)}
 .full{grid-column:1/-1}
@@ -106,7 +107,7 @@ const fmt=n=>'$'+Math.round(n).toLocaleString('es-CO');
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const today=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
 const DAYS={d:1,s:7,q:15,m:30},FN={d:'Diaria',s:'Semanal',q:'Quincenal',m:'Mensual'};
-const APPV='3.9.1',VER=4,MIG={3:r=>{let n=0;r.loans.forEach(l=>{if(!l.code)l.code='P-'+String(++n).padStart(3,'0')})}};/* migraciones futuras: MIG[n]=s=>{...} convierte datos de la versión n a n+1 sin perder nada */
+const APPV='3.10',VER=4,MIG={3:r=>{let n=0;r.loans.forEach(l=>{if(!l.code)l.code='P-'+String(++n).padStart(3,'0')})}};/* migraciones futuras: MIG[n]=s=>{...} convierte datos de la versión n a n+1 sin perder nada */
 function migrate(r){r=r||{};r.clients=r.clients||[];r.loans=r.loans||[];r.pays=r.pays||[];r.cap=r.cap||[];r.cfg=Object.assign({theme:'auto',accent:'verde',bg:'liso',notif:false},r.cfg||{});let v=r.v||1;while(v<VER){(MIG[v]||(()=>{}))(r);v++}r.v=VER;return r}
 let S=migrate();
 const newCode=()=>'P-'+String(Math.max(0,...S.loans.map(l=>+String(l.code||'').replace(/\D/g,'')||0))+1).padStart(3,'0');
@@ -207,7 +208,7 @@ function panel(){
   const nt=$('#nt');if(nt)nt.onclick=enableNotif;bindInstall();
 }
 
-let q={c:'',l:'',st:''},editC=null,selC='';
+let q={c:'',l:'',st:'',r:''},editC=null,selC='';
 function clientes(){
   const e=S.clients.find(c=>c.id===editC)||{};
   $('#v').innerHTML=`<div class="card"><h2>${e.id?'Editar cliente':'Nuevo cliente'}</h2><form id="fc">
@@ -232,6 +233,22 @@ function drawC(){
   document.querySelectorAll('[data-del]').forEach(a=>a.onclick=()=>{const id=a.dataset.del;if(S.loans.some(l=>l.client===id)){alert('Este cliente tiene préstamos y no se puede eliminar.');return}if(confirm('¿Eliminar cliente?')){S.clients=S.clients.filter(c=>c.id!==id);save();render()}});
 }
 
+const TAB0=[{d:10000,h:100000,p:10},{d:100001,h:200000,p:9},{d:200001,h:300000,p:8},{d:300001,h:400000,p:7},{d:400001,h:500000,p:6}];
+const tabla=()=>Array.isArray(S.cfg.tabla)&&S.cfg.tabla.length?S.cfg.tabla:TAB0;
+function tasaPara(m){m=+m;const t=tabla().slice().sort((a,b)=>a.d-b.d);if(!(m>0)||!t.length||m<t[0].d)return null;for(const r of t)if(m<=r.h)return r.p;return null}
+function rangoIdx(m){m=+m;const t=tabla().slice().sort((a,b)=>a.d-b.d);return m>0&&t.length&&m>=t[0].d?t.findIndex(r=>m<=r.h):-1}
+function tablaCard(){const row=r=>`<div class="trow"><input type="number" min="0" step="any" value="${r.d}" aria-label="Desde" required><input type="number" min="0" step="any" value="${r.h}" aria-label="Hasta" required><input type="number" min="0" step="0.01" value="${r.p}" aria-label="Porcentaje mensual" required><button type="button" class="btn ghost" data-tq title="Quitar rango">✕</button></div>`;
+  return `<div class="card"><h2>Porcentajes por monto</h2><p class="note">Para clientes con porcentajes distintos: al crear un préstamo eliges «Tabla por monto» y la app pone el % mensual según el monto. Los préstamos ya creados no cambian y el esquema normal sigue disponible.</p><form id="ft"><div class="trow h"><span>Desde ($)</span><span>Hasta ($)</span><span>% mensual</span><span></span></div>${tabla().map(row).join('')}<div class="full"><button type="button" class="btn ghost" id="ta">+ Agregar rango</button> <button class="btn">Guardar tabla</button> <button type="button" class="btn ghost" id="tr">Restaurar la inicial</button></div></form></div>`}
+function bindTabla(){const f=$('#ft');if(!f)return;
+  const mk=r=>{const d=document.createElement('div');d.className='trow';d.innerHTML=`<input type="number" min="0" step="any" value="${r.d}" aria-label="Desde" required><input type="number" min="0" step="any" value="${r.h}" aria-label="Hasta" required><input type="number" min="0" step="0.01" value="${r.p}" aria-label="Porcentaje mensual" required><button type="button" class="btn ghost" data-tq title="Quitar rango">✕</button>`;return d};
+  const read=()=>[...f.querySelectorAll('.trow:not(.h)')].map(r=>({d:+r.children[0].value,h:+r.children[1].value,p:+r.children[2].value}));
+  f.onclick=e=>{const b=e.target.closest('[data-tq]');if(b)b.parentNode.remove()};
+  $('#ta').onclick=()=>{const t=read(),l=t[t.length-1]||{d:0,h:0,p:10},n=mk({d:l.h+1,h:l.h+100000,p:Math.max(0,l.p-1)});f.insertBefore(n,f.querySelector('.full'))};
+  $('#tr').onclick=()=>{if(!confirm('Se restaurará la tabla inicial (10%, 9%, 8%, 7%, 6%).'))return;delete S.cfg.tabla;save();render()};
+  f.onsubmit=e=>{e.preventDefault();const t=read().sort((a,b)=>a.d-b.d);if(!t.length){alert('Agrega al menos un rango.');return}
+    for(let i=0;i<t.length;i++){const r=t[i];if(!(r.d>=0&&r.h>=r.d&&r.p>=0)){alert('Revisa el rango '+(i+1)+': «Hasta» debe ser mayor o igual a «Desde» y el % no puede ser negativo.');return}if(i&&r.d<=t[i-1].h){alert('Los rangos '+i+' y '+(i+1)+' se cruzan. Cada «Desde» debe ser mayor que el «Hasta» anterior.');return}}
+    S.cfg.tabla=t;save();alert('Tabla guardada.');render()};
+}
 function prestamos(){
   if(selC&&!S.clients.some(c=>c.id===selC))selC='';
   const opts='<option value="">— Selecciona un cliente —</option>'+S.clients.map(c=>`<option value="${c.id}" ${c.id===selC?'selected':''}>${esc(c.nombre)}${c.doc?' · '+esc(c.doc):''}</option>`).join('');
@@ -239,6 +256,8 @@ function prestamos(){
   <label>Cliente<select name="client" required>${opts}</select></label>
   <label>Monto prestado ($)<input name="monto" type="number" min="1" step="any" required></label>
   <label class="pct"><span>Porcentaje de interés (% por mes)</span><input name="tasa" type="number" min="0" step="0.01" value="10" required></label>
+  <label>Porcentaje por rango (menú)<select name="esquema"><option value="manual">Manual (escribo el %)</option>${tabla().slice().sort((a,b)=>a.d-b.d).map((r,i)=>`<option value="t${i}">${fmt(r.d)} a ${fmt(r.h)} · ${r.p}% mensual</option>`).join('')}</select></label>
+  <div class="full note" id="th"></div>
   <label>Tipo de interés<select name="metodo"><option value="simple">Simple sobre el capital</option><option value="saldo">Sobre saldo (cuota fija)</option></select></label>
   <label>Número de cuotas<input name="n" type="number" min="1" step="1" value="4" required></label>
   <label>Frecuencia de pago<select name="freq">${Object.entries(FN).map(([k,v])=>`<option value="${k}" ${k==='m'?'selected':''}>${v}</option>`).join('')}</select></label>
@@ -249,19 +268,27 @@ function prestamos(){
   <div class="full prev" id="pv"></div>
   <div class="full note">Verifica que tu tasa no supere la máxima legal (usura) vigente en Colombia.</div>
   <div class="full"><button class="btn">Crear préstamo</button></div></form>`:'<p class="empty">Primero crea un cliente.</p>'}</div>
-  <div class="card"><h2>Préstamos</h2><div class="grid" style="margin-bottom:8px"><input id="ql" type="search" placeholder="Buscar por cliente o código (P-001)" value="${esc(q.l)}"><select id="sl"><option value="">Todos los estados</option>${[['activo','Activos'],['mora','En mora'],['pagado','Finalizados']].map(o=>`<option value="${o[0]}" ${q.st===o[0]?'selected':''}>${o[1]}</option>`).join('')}</select></div><div id="ll"></div></div>`;
+  <div class="card"><h2>Préstamos</h2><div class="grid" style="margin-bottom:8px"><input id="ql" type="search" placeholder="Buscar por cliente o código (P-001)" value="${esc(q.l)}"><select id="sl"><option value="">Todos los estados</option>${[['activo','Activos'],['mora','En mora'],['pagado','Finalizados']].map(o=>`<option value="${o[0]}" ${q.st===o[0]?'selected':''}>${o[1]}</option>`).join('')}</select><select id="sr" aria-label="Filtrar por porcentaje y rango"><option value="">Todos los porcentajes y rangos</option>${tabla().slice().sort((a,b)=>a.d-b.d).map((r,i)=>`<option value="${i}" ${q.r===String(i)?'selected':''}>${r.p}% · ${fmt(r.d)} a ${fmt(r.h)}</option>`).join('')}</select></div><div id="ll"></div></div>`;
   drawL();
   $('#ql').oninput=ev=>{q.l=ev.target.value;drawL()};
   $('#sl').onchange=ev=>{q.st=ev.target.value;drawL()};
+  $('#sr').onchange=ev=>{q.r=ev.target.value;drawL()};
   const f=$('#fl');if(!f)return;
   const pv=()=>{const p=Object.fromEntries(new FormData(f)),r=calc(p);
     $('#pv').innerHTML=r.length?`Cuota: <b>${fmt(r[0].tot)}</b> · Interés total: <b>${fmt(r.reduce((a,x)=>a+x.int,0))}</b> · Total a pagar: <b>${fmt(r.reduce((a,x)=>a+x.tot,0))}</b> · Último pago: ${r[r.length-1].date}${S.cap.length?' · Disponible en caja: <b>'+fmt(capStats().caja)+'</b>':''}`:'Completa monto y cuotas para ver el cálculo.'};
-  f.oninput=pv;pv();
-  f.onsubmit=e=>{e.preventDefault();const p=Object.fromEntries(new FormData(f));if(!S.clients.some(c=>c.id===p.client)){alert('Selecciona el cliente de este préstamo.');return}if(!confirm('Crear préstamo de '+fmt(p.monto)+' para '+cname(p.client)+'?'))return;if(S.cap.length){const cs=capStats();if(+p.monto>cs.caja&&!confirm('Este préstamo ('+fmt(p.monto)+') supera tu capital disponible ('+fmt(cs.caja)+'). ¿Crearlo de todas formas?'))return}const ln={id:uid(),...p,code:newCode()};S.loans.push(ln);selC='';save();render();approval(ln.id)};
+  const TS=tabla().slice().sort((a,b)=>a.d-b.d),ix=m=>m>0&&m>=TS[0].d?TS.findIndex(r=>m<=r.h):-1;
+  const sync=fm=>{const ti=f.elements.tasa,h=$('#th'),se=f.elements.esquema,m=+f.elements.monto.value;f.dataset.bad='';
+    if(se.value==='manual'){ti.readOnly=false;h.textContent='';return}
+    if(fm&&ix(m)>=0)se.value='t'+ix(m);
+    const i=+se.value.slice(1),r=TS[i];ti.value=r.p;ti.readOnly=true;
+    if(m>0&&ix(m)!==i){f.dataset.bad='1';h.textContent='⚠️ El monto '+fmt(m)+(ix(m)<0?' está fuera de la tabla.':' no corresponde a este rango.')+' Corrige el monto o elige el rango correcto en el menú.'}
+    else h.textContent='Rango '+fmt(r.d)+' a '+fmt(r.h)+' → '+r.p+'% mensual.'};
+  f.oninput=f.onchange=ev=>{sync(!!(ev&&ev.target&&ev.target.name==='monto'));pv()};sync();pv();
+  f.onsubmit=e=>{e.preventDefault();const p=Object.fromEntries(new FormData(f));if(f.dataset.bad){alert('El monto no corresponde al rango elegido. Corrige el monto o elige el rango correcto en el menú.');return}p.esquema=p.esquema==='manual'?'manual':'tabla';if(!S.clients.some(c=>c.id===p.client)){alert('Selecciona el cliente de este préstamo.');return}if(!confirm('Crear préstamo de '+fmt(p.monto)+' para '+cname(p.client)+'?'))return;if(S.cap.length){const cs=capStats();if(+p.monto>cs.caja&&!confirm('Este préstamo ('+fmt(p.monto)+') supera tu capital disponible ('+fmt(cs.caja)+'). ¿Crearlo de todas formas?'))return}const ln={id:uid(),...p,code:newCode()};S.loans.push(ln);selC='';save();render();approval(ln.id)};
 }
 
 function drawL(){
-  const t=q.l.toLowerCase(),R=S.loans.map(l=>({l,s:sched(l)})).filter(x=>(cname(x.l.client)+' '+(x.l.code||'')).toLowerCase().includes(t)&&(!q.st||x.s.st===q.st));
+  const t=q.l.toLowerCase(),R=S.loans.map(l=>({l,s:sched(l)})).filter(x=>(cname(x.l.client)+' '+(x.l.code||'')).toLowerCase().includes(t)&&(!q.st||x.s.st===q.st)&&(q.r===''||rangoIdx(x.l.monto)===+q.r));
   $('#ll').innerHTML=R.length?`<div class="wrap"><table><tr><th>Cliente</th><th class="n">Monto</th><th class="n">Tasa</th><th class="n">Saldo</th><th>Próx. pago</th><th>Estado</th><th></th></tr>${R.map(({l,s})=>{const nx=s.rows.find(r=>r.paid<r.tot-.5),late=s.st==='mora',dn=s.st==='pagado',soon=nx&&!late&&nx.date<=addDate(today(),1,'d'),msg=late?'Hola '+cname(l.client)+', le recordamos que tiene un pago vencido de '+fmt(s.overdue)+'. Por favor comuníquese para ponerse al día.':nx?'Hola '+cname(l.client)+', le recordamos que su cuota de '+fmt(nx.tot-nx.paid)+' vence el '+nx.date+'. ¡Gracias!':'';return`<tr class="${dn?'okr':late?'later':''}"><td>${esc(cname(l.client))}<small style="display:block;color:var(--mut)">${esc(l.code||'')}</small></td><td class="n">${fmt(l.monto)}</td><td class="n">${l.tasa}%</td><td class="n">${fmt(s.saldo)}</td><td><span class="dot ${dn?'g':late?'r':soon?'y':''}"></span>${dn?'Pagado':nx?nx.date:'—'}</td><td><span class="tag ${s.st}">${LBL[s.st]}</span></td><td>${msg?waA(l.client,msg,l)+' ':''}${dn?'<a class="lk" data-fin="'+l.id+'">Reporte</a> · ':''}<a class="lk" data-open="${l.id}">Abrir</a></td></tr>`}).join('')}</table></div>`:`<p class="empty">${S.loans.length?'Sin resultados.':'Aún no hay préstamos.'}</p>`;
   bindOpen();
 }
@@ -412,7 +439,7 @@ function receipt(pid,fresh){
     bind:()=>{$('#cpr').onclick=()=>receiptPrint(pid);const cfr=$('#cfr');if(cfr)cfr.onclick=()=>finalReport(l.id);const u=$('#cud');if(u)u.onclick=()=>{if(!confirm('¿Deshacer este pago?'))return;S.pays=S.pays.filter(x=>x.id!==pid);save();LASTPAY=0;$('#rc').close();if($('#dlg').open)openLoan(l.id);render()}}});
 }
 /* Novedades (se muestran una vez por versión) */
-const NEWS=['Recordatorio de cuota por WhatsApp visible en el detalle de cada préstamo activo (también en el celular).','Nuevo «Reporte por WhatsApp» en los préstamos finalizados: avisa al cliente con el total pagado, saldo $0 y cuotas pagadas, como imagen o texto.','Al crear un préstamo aparece la aprobación con el número de cuotas y todas las fechas de pago, lista para compartir como imagen.','Pago en un toque: la próxima cuota ya aparece lista, solo toca «Pagar».','El recibo de pago ahora es una imagen para compartir, con cuotas pagadas y pendientes.','La app descarga las mejoras cuando hay internet y te avisa para que las aceptes. Tus datos no se tocan.','Cada cuota tiene su botón «Pagar» y se muestra la mora por línea.','Respaldo: exportar e importar (fusionando o reemplazando) y copias internas con restauración.','Huella / Face ID para entrar, con la opción «Mantener la huella siempre activa» y «Reasignar huella».'];
+const NEWS=['Nuevo menú «Porcentaje por rango» al crear un préstamo: eliges el rango (10 %, 9 %, 8 %, 7 %, 6 %) o escribes el monto y la app pone el % mensual. En la lista de préstamos hay un filtro por porcentaje y rango. Se edita en Ajustes > Porcentajes por monto.','Recordatorio de cuota por WhatsApp visible en el detalle de cada préstamo activo (también en el celular).','Nuevo «Reporte por WhatsApp» en los préstamos finalizados: avisa al cliente con el total pagado, saldo $0 y cuotas pagadas, como imagen o texto.','Al crear un préstamo aparece la aprobación con el número de cuotas y todas las fechas de pago, lista para compartir como imagen.','Pago en un toque: la próxima cuota ya aparece lista, solo toca «Pagar».','El recibo de pago ahora es una imagen para compartir, con cuotas pagadas y pendientes.','La app descarga las mejoras cuando hay internet y te avisa para que las aceptes. Tus datos no se tocan.','Cada cuota tiene su botón «Pagar» y se muestra la mora por línea.','Respaldo: exportar e importar (fusionando o reemplazando) y copias internas con restauración.','Huella / Face ID para entrar, con la opción «Mantener la huella siempre activa» y «Reasignar huella».'];
 function showNews(){const c=S.cfg;if(c.seenV===APPV)return;const first=!c.seenV&&!S.clients.length&&!S.loans.length;c.seenV=APPV;save();if(first)return;
   const r=$('#rc');document.body.classList.remove('rcp');r.onclose=null;r.innerHTML='<h2>✨ Novedades · versión '+APPV+'</h2><ul>'+NEWS.map(n=>'<li>'+esc(n)+'</li>').join('')+'</ul><p class="note">Tus clientes, préstamos, pagos y capital siguen intactos.</p><p><button class="btn" id="nx">Entendido</button></p>';if(!r.open)r.showModal();$('#nx').onclick=()=>r.close()}
 /* Actualizaciones: se descargan solas con internet y el cliente las acepta con un toque */
@@ -478,11 +505,11 @@ function ajustes(){
   $('#v').innerHTML=`<div class="card"><h2>Apariencia</h2><form id="fa"><label>Tema<select name="theme">${op([['auto','Automático (el del dispositivo)'],['light','Claro'],['dark','Oscuro']],c.theme)}</select></label><label>Fondo<select name="bg">${op([['liso','Liso'],['degradado','Degradado'],['cuadricula','Cuadrícula']],c.bg)}</select></label><div class="full"><span class="note">Color principal</span><div class="sw">${Object.entries(AC).map(([k,v])=>`<button type="button" class="swb ${c.accent===k?'on':''}" data-ac="${k}" style="background:${v}" title="${k}" aria-label="${k}"></button>`).join('')}</div></div></form></div>
   <div class="card"><h2>Avisos</h2><p class="note">Recibe una notificación un día antes de cada cobro. Funciona mientras la app esté abierta o instalada en el dispositivo.</p>${'Notification'in window?(c.notif&&Notification.permission==='granted'?'<p><b>Avisos activados.</b></p><button class="btn ghost" id="nf">Desactivar avisos</button>':'<button class="btn" id="nf">Activar avisos</button>'):'<p class="note">Tu navegador no admite notificaciones.</p>'}</div>
   <div class="card"><h2>Seguridad</h2><p class="note">Protege el acceso a la app en este dispositivo. El código de 4 a 6 dígitos sirve para recuperar la contraseña. Los respaldos .json no van cifrados.</p>${SEC?`<form id="fs"><label>Contraseña actual<input type="password" name="o" required></label><label>Nueva contraseña (mín. 4)<input type="password" name="p" minlength="4" required></label><label>Nuevo código de recuperación (4 a 6 dígitos)<input name="c" inputmode="numeric" pattern="[0-9]{4,6}" required></label><div class="full"><button class="btn">Guardar cambios</button> <button type="button" class="btn ghost" id="lk">Bloquear ahora</button> <button type="button" class="btn ghost" id="rm">Quitar contraseña</button></div></form>`:`<form id="fs"><label>Contraseña (mín. 4)<input type="password" name="p" minlength="4" required></label><label>Código de recuperación (4 a 6 dígitos)<input name="c" inputmode="numeric" pattern="[0-9]{4,6}" required></label><div class="full"><button class="btn">Activar contraseña</button></div></form>`}</div>
-  ${bioCard()}${copiasCard(true)}${soporteCard()}
+  ${tablaCard()}${bioCard()}${copiasCard(true)}${soporteCard()}
   ${installHtml(true)}
   <div class="card"><h2>Diagnóstico de instalación</h2><div id="dg" class="note dg">Comprobando…</div></div>
   <div class="card"><h2>Acerca de</h2><p class="note">Préstamos y Cobros · versión ${APPV}. Tus datos se conservan cuando reemplazas el archivo por una versión nueva. Antes de actualizar, exporta un respaldo desde Reportes.</p><button class="btn ghost" id="bu">Buscar actualización</button></div>`;
-  bindInstall();diag();const bu=$('#bu');if(bu)bu.onclick=async()=>{const rs=()=>{bu.disabled=false;bu.textContent='Buscar actualización'};if(!REG){alert('Abre la app desde su dirección https para buscar actualizaciones.');return}bu.disabled=true;bu.textContent='Buscando…';try{await REG.update()}catch(e){alert('No hay conexión. Inténtalo cuando estés en línea.');rs();return}await new Promise(r=>setTimeout(r,2500));rs();if(REG.waiting)updBanner();else if(REG.installing)alert('Descargando la mejora… en unos segundos aparecerá el aviso para aceptarla.');else alert('Ya tienes la versión más reciente ('+APPV+').')};$('#fa').onchange=e=>{if(e.target.name){c[e.target.name]=e.target.value;save();applyTheme()}};
+  bindInstall();bindTabla();diag();const bu=$('#bu');if(bu)bu.onclick=async()=>{const rs=()=>{bu.disabled=false;bu.textContent='Buscar actualización'};if(!REG){alert('Abre la app desde su dirección https para buscar actualizaciones.');return}bu.disabled=true;bu.textContent='Buscando…';try{await REG.update()}catch(e){alert('No hay conexión. Inténtalo cuando estés en línea.');rs();return}await new Promise(r=>setTimeout(r,2500));rs();if(REG.waiting)updBanner();else if(REG.installing)alert('Descargando la mejora… en unos segundos aparecerá el aviso para aceptarla.');else alert('Ya tienes la versión más reciente ('+APPV+').')};$('#fa').onchange=e=>{if(e.target.name){c[e.target.name]=e.target.value;save();applyTheme()}};
   document.querySelectorAll('[data-ac]').forEach(b=>b.onclick=()=>{c.accent=b.dataset.ac;save();applyTheme();ajustes()});
   const nf=$('#nf');if(nf)nf.onclick=()=>{if(c.notif){c.notif=false;save();ajustes()}else enableNotif()};
   $('#fs').onsubmit=async ev=>{ev.preventDefault();const f=Object.fromEntries(new FormData(ev.target));

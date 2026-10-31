@@ -25,6 +25,7 @@ Aplicación web para controlar una cartera de préstamos: clientes, intereses, c
 - Interruptor remoto `estado.json` (ver abajo).
 - Contraseña con código de recuperación de 4 a 6 dígitos.
 - Temas claro, oscuro o automático, con varios colores y fondos.
+- Menú «Porcentaje por rango»: esquema opcional (se elige el rango en un menú, o se escribe el monto y el rango se selecciona solo; no deja crear el préstamo si el monto no corresponde al rango) y filtro por porcentaje y rango en la lista de préstamos de porcentajes por rangos de monto (inicial: $10.000–100.000 = 10 %, $100.001–200.000 = 9 %, $200.001–300.000 = 8 %, $300.001–400.000 = 7 %, $400.001–500.000 = 6 %). Se edita en Ajustes y se elige al crear el préstamo; el modo manual sigue igual.
 
 ## Cómo usarla
 
@@ -64,6 +65,8 @@ screenshot-*.png        Capturas para el diálogo de instalación
 - 3.9: nuevo «Reporte por WhatsApp» de préstamo finalizado (imagen y texto con total pagado, saldo $0 y cuotas pagadas). No cambia el esquema de datos (`VER` 4): los datos existentes se conservan. `sw.js` pasa a `cartera-v15`.
 
 - 3.9.1: se reasigna el recordatorio de cuota por WhatsApp en el detalle de los préstamos activos («Recordar cuota por WhatsApp», con aviso ⏰ si vence hoy o mañana); antes los íconos por cuota quedaban ocultos en pantallas de celular. Se conserva el ícono de la lista. No cambia el esquema de datos (`VER` 4). `sw.js` pasa a `cartera-v16`.
+
+- 3.10: nuevo menú «Porcentaje por rango» (porcentaje mensual según el monto del préstamo) al crear un préstamo, con la tabla editable en Ajustes > «Porcentajes por monto». No cambia el esquema de datos (`VER` 4): se guarda en la configuración y los datos existentes se conservan. `sw.js` pasa a `cartera-v17`.
 
 ## Interruptor remoto (estado.json)
 
