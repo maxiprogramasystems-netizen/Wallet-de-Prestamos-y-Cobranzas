@@ -48,7 +48,7 @@ td.n,th.n{text-align:right}
 a.lk{color:var(--acc);cursor:pointer;font-weight:700;text-decoration:underline}
 dialog{max-width:760px;width:calc(100% - 24px);border:1px solid var(--line);border-radius:14px;background:var(--card);color:var(--ink);padding:18px}
 dialog::backdrop{background:rgba(0,0,0,.5)}
-.tag{white-space:nowrap}textarea{resize:vertical}
+.tag{white-space:nowrap}.bdg{font-style:normal;background:var(--bad);color:#fff;border-radius:999px;font-size:.7rem;padding:1px 6px;margin-left:5px}textarea{resize:vertical}
 .brand{display:flex;align-items:center;gap:12px;margin:6px 0 14px}.brand img{width:52px;height:52px;flex:none}.brand h1{margin:0}.brand .sub{margin:0}
 :root[data-accent=azul]{--acc:#1f5fbf}:root[data-accent=violeta]{--acc:#6d3fc0}:root[data-accent=rosa]{--acc:#c2255c}:root[data-accent=naranja]{--acc:#c25b00}
 :root[data-accent=azul][data-mode=dark]{--acc:#6aa6ff}:root[data-accent=violeta][data-mode=dark]{--acc:#a98bff}:root[data-accent=rosa][data-mode=dark]{--acc:#ff7aa8}:root[data-accent=naranja][data-mode=dark]{--acc:#ff9a4d}
@@ -107,7 +107,7 @@ const fmt=n=>'$'+Math.round(n).toLocaleString('es-CO');
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const today=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
 const DAYS={d:1,s:7,q:15,m:30},FN={d:'Diaria',s:'Semanal',q:'Quincenal',m:'Mensual'};
-const APPV='3.11',VER=4,MIG={3:r=>{let n=0;r.loans.forEach(l=>{if(!l.code)l.code='P-'+String(++n).padStart(3,'0')})}};/* migraciones futuras: MIG[n]=s=>{...} convierte datos de la versión n a n+1 sin perder nada */
+const APPV='3.12',VER=4,MIG={3:r=>{let n=0;r.loans.forEach(l=>{if(!l.code)l.code='P-'+String(++n).padStart(3,'0')})}};/* migraciones futuras: MIG[n]=s=>{...} convierte datos de la versión n a n+1 sin perder nada */
 function migrate(r){r=r||{};r.clients=r.clients||[];r.loans=r.loans||[];r.pays=r.pays||[];r.cap=r.cap||[];r.cfg=Object.assign({theme:'auto',accent:'verde',bg:'liso',notif:false},r.cfg||{});let v=r.v||1;while(v<VER){(MIG[v]||(()=>{}))(r);v++}r.v=VER;return r}
 let S=migrate();
 const newCode=()=>'P-'+String(Math.max(0,...S.loans.map(l=>+String(l.code||'').replace(/\D/g,'')||0))+1).padStart(3,'0');
@@ -179,13 +179,14 @@ for(const z of ['192x192','512x512']){let g=false;try{const ic=mj.icons.find(x=>
 L.push('<li>'+(isApp()?'✅ App instalada en este dispositivo':'ℹ️ Aún no instalada en este dispositivo')+'</li>');
 el.innerHTML='<ul>'+L.join('')+'</ul>'}
 function overdueList(){const o=[];S.loans.forEach(l=>{const s=sched(l);if(s.st==='mora')o.push({l,s,v:s.overdue})});return o}
+function markAv(k){const a=S.cfg.avis||{},n={};Object.keys(a).forEach(x=>{if(a[x]===today())n[x]=a[x]});n[k]=today();S.cfg.avis=n;save()}
 function dueTom(){const t=addDate(today(),1,'d'),o=[];S.loans.forEach(l=>sched(l).rows.forEach(r=>{if(r.date===t&&r.paid<r.tot-.5)o.push({l,r,v:r.tot-r.paid})}));return o}
 function notify(){if(!S.cfg.notif||!('Notification'in window)||Notification.permission!=='granted')return;const t=dueTom(),m=overdueList();if(!t.length&&!m.length||S.cfg.lastN===today())return;S.cfg.lastN=today();save();const b=[];if(t.length)b.push('Mañana vencen: '+t.map(x=>cname(x.l.client)+' '+fmt(x.v)).join(', '));if(m.length)b.push('Pagos vencidos: '+m.map(x=>cname(x.l.client)+' '+fmt(x.v)).join(', '));const ti=m.length?'Cobros: hay pagos vencidos':'Cobros de mañana',o={body:b.join('\n'),icon:IC.l},n=()=>new Notification(ti,o);navigator.serviceWorker&&navigator.serviceWorker.getRegistration?navigator.serviceWorker.getRegistration().then(g=>g?g.showNotification(ti,o):n()).catch(n):n()}
 function enableNotif(){if(!('Notification'in window)){alert('Tu navegador no admite notificaciones.');return}Notification.requestPermission().then(p=>{S.cfg.notif=p==='granted';save();if(p==='granted'){alert('Listo. Te avisaré un día antes de cada cobro mientras la app esté abierta o instalada.');notify()}else alert('No diste permiso. Puedes activarlo desde los ajustes del navegador.');render()})}
 const startAlerts=()=>{notify();setInterval(notify,18e5)};
 const cname=id=>(S.clients.find(c=>c.id===id)||{nombre:'(eliminado)'}).nombre;
 
-function nav(){$('#nav').innerHTML=TABS.map(t=>`<button class="${tab===t[0]?'on':''}" data-t="${t[0]}">${t[1]}</button>`).join('');
+function nav(){const mn=overdueList().length;$('#nav').innerHTML=TABS.map(t=>`<button class="${tab===t[0]?'on':''}" data-t="${t[0]}">${t[1]}${mn&&(t[0]==='panel'||t[0]==='prestamos')?'<i class="bdg" aria-label="'+mn+' en mora">'+mn+'</i>':''}</button>`).join('');
   document.querySelectorAll('#nav button').forEach(b=>b.onclick=()=>{tab=b.dataset.t;render()})}
 function render(){nav();({panel,clientes,prestamos,capital,reportes,ajustes})[tab]()}
 
@@ -195,7 +196,11 @@ function panel(){
   const m=L.filter(x=>x.s.st==='mora');
   const lim=addDate(today(),7,'d'),up=L.map(x=>{const r=x.s.rows.find(r=>r.paid<r.tot-.5&&r.date>=today()&&r.date<=lim);return r?{l:x.l,r}:null}).filter(Boolean).sort((a,b)=>a.r.date.localeCompare(b.r.date));
   const oldBk=S.loans.length&&(!S.lastBackup||(new Date(today())-new Date(S.lastBackup))/864e5>7);
-  const tom=dueTom(),lateHtml=m.length?`<div class="card late"><h2>⚠ ${m.length} préstamo(s) con pagos vencidos</h2>${m.map(x=>`<div class="row"><div><b>${esc(cname(x.l.client))}</b><small>Vencido: ${fmt(x.s.overdue)}</small></div><span>${waA(x.l.client,'Hola '+cname(x.l.client)+', le recordamos que tiene un pago vencido de '+fmt(x.s.overdue)+'. Por favor comuníquese para ponerse al día.',x.l)} <a class="lk" data-open="${x.l.id}">Ver</a></span></div>`).join('')}</div>`:'',tomHtml=tom.length?`<div class="card alert"><h2>Mañana vencen ${tom.length} cobro(s)</h2>${tom.map(x=>`<div class="row"><div>${esc(cname(x.l.client))}<small>Cuota ${x.r.k}: ${fmt(x.v)}</small></div><span>${waA(x.l.client,'Hola '+cname(x.l.client)+', le recordamos que mañana vence su cuota de '+fmt(x.v)+'. ¡Gracias!',x.l)} <a class="lk" data-open="${x.l.id}">Ver</a></span></div>`).join('')}</div>`:'';
+  const tom=dueTom(),avK=x=>x.l.id+'|'+x.r.k,avD=x=>(S.cfg.avis||{})[avK(x)]===today(),tmsg=x=>'Hola '+cname(x.l.client)+', le recordamos que mañana vence su cuota de '+fmt(x.v)+'. ¡Gracias!',
+  dAt=x=>{const r=x.s.rows.find(r=>r.late);return r?Math.max(1,Math.round((new Date(today())-new Date(r.date))/864e5)):0},totV=m.reduce((a,x)=>a+x.s.overdue,0),
+  lateHtml=m.length?`<div class="card late"><h2>⚠ ${m.length} cliente(s) en mora · ${fmt(totV)} vencido</h2>${m.map(x=>`<div class="row"><div><b>${esc(cname(x.l.client))}</b><small>${esc(x.l.code||'')} · ${dAt(x)} día(s) de atraso · Vencido: ${fmt(x.s.overdue)}</small></div><span>${waA(x.l.client,'Hola '+cname(x.l.client)+', le recordamos que tiene un pago vencido de '+fmt(x.s.overdue)+'. Por favor comuníquese para ponerse al día.',x.l)} <a class="lk" data-open="${x.l.id}">Ver</a></span></div>`).join('')}</div>`:'',
+  pend=tom.filter(x=>!avD(x)&&waLink(x.l.client,'x',x.l)).length,
+  tomHtml=tom.length?`<div class="card alert"><h2>Mañana vencen ${tom.length} cobro(s)</h2>${tom.map(x=>{const h=waLink(x.l.client,tmsg(x),x.l);return`<div class="row"><div>${esc(cname(x.l.client))}<small>Cuota ${x.r.k}: ${fmt(x.v)}${avD(x)?' · <span style="color:var(--ok)">✓ Avisado hoy</span>':''}</small></div><span>${h?`<a class="wa" target="_blank" rel="noopener" data-av="${avK(x)}" href="${h}" title="Avisar por WhatsApp" aria-label="Avisar por WhatsApp">${WAI}</a>`:'<span class="wa off" title="Sin teléfono">'+WAI+'</span>'} <a class="lk" data-open="${x.l.id}">Ver</a></span></div>`}).join('')}${pend?`<button type="button" class="btn" id="avn" style="margin-top:8px">Avisar al siguiente (${pend} pendiente${pend>1?'s':''})</button>`:'<p class="note" style="margin:8px 0 0">Todos los clientes con teléfono ya fueron avisados hoy.</p>'}</div>`:'';
   const ntBtn=('Notification'in window&&!S.cfg.notif)?'<div class="card"><button class="btn" id="nt">Activar aviso un día antes del cobro</button> <span class="note">El aviso aparece cuando la app está abierta o instalada.</span></div>':'';
   $('#v').innerHTML=`<div class="grid">
   <div class="card stat"><b>${fmt(prest)}</b><span>Total prestado</span></div>
@@ -211,6 +216,8 @@ function panel(){
   ${S.clients.length?'':'<div class="card"><p class="empty">Empieza creando tu primer cliente en la pestaña Clientes.</p></div>'}`;
   bindOpen();
   const nt=$('#nt');if(nt)nt.onclick=enableNotif;bindInstall();
+  document.querySelectorAll('[data-av]').forEach(a=>a.addEventListener('click',()=>{markAv(a.dataset.av);setTimeout(render,600)}));
+  const an=$('#avn');if(an)an.onclick=()=>{const x=tom.find(x=>!avD(x)&&waLink(x.l.client,'x',x.l));if(!x)return;markAv(avK(x));window.open(waLink(x.l.client,tmsg(x),x.l),'_blank');setTimeout(render,600)};
 }
 
 let q={c:'',l:'',st:'',r:''},editC=null,selC='';
@@ -305,10 +312,56 @@ function prestamos(){
 
 function drawL(){
   const t=q.l.toLowerCase(),R=S.loans.map(l=>({l,s:sched(l)})).filter(x=>(cname(x.l.client)+' '+(x.l.code||'')).toLowerCase().includes(t)&&(!q.st||x.s.st===q.st)&&(q.r===''||rangoIdx(x.l.monto)===+q.r));
-  $('#ll').innerHTML=R.length?`<div class="wrap"><table><tr><th>Cliente</th><th class="n">Monto</th><th class="n">Tasa</th><th class="n">Saldo</th><th>Próx. pago</th><th>Estado</th><th></th></tr>${R.map(({l,s})=>{const nx=s.rows.find(r=>r.paid<r.tot-.5),late=s.st==='mora',dn=s.st==='pagado',soon=nx&&!late&&nx.date<=addDate(today(),1,'d'),msg=late?'Hola '+cname(l.client)+', le recordamos que tiene un pago vencido de '+fmt(s.overdue)+'. Por favor comuníquese para ponerse al día.':nx?'Hola '+cname(l.client)+', le recordamos que su cuota de '+fmt(nx.tot-nx.paid)+' vence el '+nx.date+'. ¡Gracias!':'';return`<tr class="${dn?'okr':late?'later':''}"><td>${esc(cname(l.client))}<small style="display:block;color:var(--mut)">${esc(l.code||'')}</small></td><td class="n">${fmt(l.monto)}</td><td class="n">${l.metodo==='saldov'?l.tasa+'% (var.)':l.tasa+'%'}</td><td class="n">${fmt(s.saldo)}</td><td><span class="dot ${dn?'g':late?'r':soon?'y':''}"></span>${dn?'Pagado':nx?nx.date:'—'}</td><td><span class="tag ${s.st}">${LBL[s.st]}</span></td><td>${msg?waA(l.client,msg,l)+' ':''}${dn?'<a class="lk" data-fin="'+l.id+'">Reporte</a> · ':''}<a class="lk" data-open="${l.id}">Abrir</a></td></tr>`}).join('')}</table></div>`:`<p class="empty">${S.loans.length?'Sin resultados.':'Aún no hay préstamos.'}</p>`;
+  $('#ll').innerHTML=R.length?`<div class="wrap"><table><tr><th>Cliente</th><th class="n">Monto</th><th class="n">Tasa</th><th class="n">Saldo</th><th>Próx. pago</th><th>Estado</th><th>Editar</th><th></th></tr>${R.map(({l,s})=>{const nx=s.rows.find(r=>r.paid<r.tot-.5),late=s.st==='mora',dn=s.st==='pagado',soon=nx&&!late&&nx.date<=addDate(today(),1,'d'),msg=late?'Hola '+cname(l.client)+', le recordamos que tiene un pago vencido de '+fmt(s.overdue)+'. Por favor comuníquese para ponerse al día.':nx?'Hola '+cname(l.client)+', le recordamos que su cuota de '+fmt(nx.tot-nx.paid)+' vence el '+nx.date+'. ¡Gracias!':'';return`<tr class="${dn?'okr':late?'later':''}"><td>${esc(cname(l.client))}<small style="display:block;color:var(--mut)">${esc(l.code||'')}</small></td><td class="n">${fmt(l.monto)}</td><td class="n">${l.metodo==='saldov'?l.tasa+'% (var.)':l.tasa+'%'}</td><td class="n">${fmt(s.saldo)}</td><td><span class="dot ${dn?'g':late?'r':soon?'y':''}"></span>${dn?'Pagado':nx?nx.date:'—'}</td><td><span class="tag ${s.st}">${LBL[s.st]}</span></td><td><a class="lk" data-edit="${l.id}">✎ Editar</a></td><td>${msg?waA(l.client,msg,l)+' ':''}${dn?'<a class="lk" data-fin="'+l.id+'">Reporte</a> · ':''}<a class="lk" data-open="${l.id}">Abrir</a></td></tr>`}).join('')}</table></div>`:`<p class="empty">${S.loans.length?'Sin resultados.':'Aún no hay préstamos.'}</p>`;
   bindOpen();
 }
-function bindOpen(){document.querySelectorAll('[data-open]').forEach(a=>a.onclick=()=>openLoan(a.dataset.open));document.querySelectorAll('[data-fin]').forEach(a=>a.onclick=()=>finalReport(a.dataset.fin))}
+function editLoan(id){
+  const l=S.loans.find(x=>x.id===id);if(!l)return;const d=$('#dlg'),s=sched(l);
+  const co=S.clients.map(c=>`<option value="${c.id}" ${c.id===l.client?'selected':''}>${esc(c.nombre)}${c.doc?' · '+esc(c.doc):''}</option>`).join('');
+  d.innerHTML=`<h2>Editar ${esc(l.code||'préstamo')} · ${esc(cname(l.client))}</h2>
+  <p class="note">Los pagos registrados (${fmt(s.paid)}) se conservan. Las cuotas se recalculan con los datos nuevos.</p>
+  <form id="fe">
+  <label>Cliente<select name="client" required>${co}</select></label>
+  <label>Monto prestado ($)<input name="monto" type="number" min="1" step="any" required value="${l.monto}"></label>
+  <label>Interés (% por mes)<input name="tasa" type="number" min="0" step="0.01" required value="${l.tasa}"></label>
+  <label>Tipo de interés<select name="metodo">${[['simple','Simple sobre el capital'],['saldo','Sobre saldo (cuota fija)'],['saldov','Sobre saldo, % distinto por cuota (manual)']].map(o=>`<option value="${o[0]}" ${(l.metodo||'saldo')===o[0]?'selected':''}>${o[1]}</option>`).join('')}</select></label>
+  <div class="full" id="epc" hidden></div>
+  <label>Número de cuotas<input name="n" type="number" min="1" step="1" required value="${l.n}"></label>
+  <label>Frecuencia de pago<select name="freq">${Object.entries(FN).map(([k,v])=>`<option value="${k}" ${l.freq===k?'selected':''}>${v}</option>`).join('')}</select></label>
+  <label>Fecha del préstamo<input name="fecha" type="date" required value="${l.fecha}"></label>
+  <label>Interés por mora (% por mes)<input name="mora" type="number" min="0" step="0.01" value="${l.mora||0}"></label>
+  <label class="full">Observaciones<textarea name="obs" rows="2">${esc(l.obs||'')}</textarea></label>
+  <label class="full">Mensaje opcional para el cliente (se agrega a los avisos de WhatsApp)<textarea name="msg" rows="2">${esc(l.msg||'')}</textarea></label>
+  <div class="full prev" id="epv"></div>
+  <div class="full"><button class="btn">Guardar cambios</button> <button type="button" class="btn ghost" id="ec">Cancelar</button></div>
+  </form>
+  <p style="margin-top:14px"><a class="lk" id="edl" style="color:var(--bad)">Eliminar préstamo</a></p>`;
+  if(!d.open)d.showModal();
+  const f=$('#fe'),PC=(l.pcts||[]).slice();
+  const gp=()=>{const p=Object.fromEntries(new FormData(f));Object.keys(p).forEach(k=>{if(/^ep\d+$/.test(k))delete p[k]});if(p.metodo==='saldov'){p.pcts=[];for(let k=2;k<=(+p.n||0);k++){const e=f.elements['ep'+k];p.pcts.push(e?e.value:'')}}return p};
+  const pcs=()=>{const p=Object.fromEntries(new FormData(f)),el=$('#epc'),n=Math.min(Math.floor(+p.n)||0,60);
+    if(p.metodo!=='saldov'||n<2){el.innerHTML='';el.hidden=true;return}
+    let h='<div class="note">La cuota 1 usa el % de arriba. Desde la cuota 2 escribe el % de cada cuota.</div>';
+    for(let k=2;k<=n;k++){const cur=f.elements['ep'+k],v=cur?cur.value:(PC[k-2]!==undefined&&PC[k-2]!==''?PC[k-2]:p.tasa);h+=`<label>% de la cuota ${k}<input name="ep${k}" type="number" min="0" step="0.01" required value="${v}"></label>`}
+    el.innerHTML=h;el.hidden=false};
+  const pv=()=>{const p=gp(),r=calc({...l,...p});$('#epv').innerHTML=r.length?`Cuota: <b>${fmt(r[0].tot)}</b> · Total a pagar: <b>${fmt(r.reduce((a,x)=>a+x.tot,0))}</b> · Último pago: ${r[r.length-1].date} · Ya pagado: <b>${fmt(s.paid)}</b>`:'Completa monto y cuotas para ver el cálculo.'};
+  f.oninput=f.onchange=ev=>{const t=ev&&ev.target&&ev.target.name;if(t==='n'||t==='metodo')pcs();pv()};pcs();pv();
+  f.onsubmit=e=>{e.preventDefault();const p=gp();
+    if(!S.clients.some(c=>c.id===p.client)){alert('Selecciona el cliente de este préstamo.');return}
+    if(!(+p.monto>0)||!(Math.floor(+p.n)>=1)){alert('Revisa el monto y el número de cuotas.');return}
+    p.n=Math.floor(+p.n);
+    const nt=calc({...l,...p}).reduce((a,x)=>a+x.tot,0);
+    if(s.paid>nt+.5&&!confirm('Lo ya pagado ('+fmt(s.paid)+') es mayor que el nuevo total a pagar ('+fmt(nt)+'). El préstamo quedará finalizado. ¿Guardar?'))return;
+    if(!confirm('¿Guardar los cambios de '+(l.code||'este préstamo')+'? Se recalculan las cuotas y se conservan los pagos.'))return;
+    mkCopy('Antes de editar préstamo');
+    if(String(l.tasa)!==String(p.tasa))l.esquema='manual';
+    Object.assign(l,{client:p.client,monto:p.monto,tasa:p.tasa,metodo:p.metodo,n:p.n,freq:p.freq,fecha:p.fecha,mora:p.mora||0,obs:p.obs||'',msg:p.msg||''});
+    if(p.metodo==='saldov')l.pcts=p.pcts;else delete l.pcts;
+    save();openLoan(id);render()};
+  $('#ec').onclick=()=>openLoan(id);
+  $('#edl').onclick=()=>{if(confirm('¿Eliminar este préstamo y sus pagos? No se puede deshacer (antes se guarda una copia interna).')){mkCopy('Antes de eliminar préstamo');S.loans=S.loans.filter(x=>x.id!==id);S.pays=S.pays.filter(p=>p.loan!==id);save();d.close();render()}};
+}
+function bindOpen(){document.querySelectorAll('[data-edit]').forEach(a=>a.onclick=()=>editLoan(a.dataset.edit));document.querySelectorAll('[data-open]').forEach(a=>a.onclick=()=>openLoan(a.dataset.open));document.querySelectorAll('[data-fin]').forEach(a=>a.onclick=()=>finalReport(a.dataset.fin))}
 function openLoan(id){
   const l=S.loans.find(x=>x.id===id);if(!l)return;const s=sched(l),d=$('#dlg');
   d.innerHTML=`<h2>${l.code?esc(l.code)+' · ':''}${esc(cname(l.client))} · ${fmt(l.monto)} al ${l.tasa}% mensual</h2>
@@ -320,7 +373,7 @@ function openLoan(id){
   <h2 style="margin-top:14px">Pagar</h2>
   ${payCard(l,s)}
   <details class="oth"><summary>Otro valor o abono (manual)</summary><form id="fp"><label>Valor ($)<input name="amt" type="number" min="1" step="any" required></label><label>Fecha<input name="date" type="date" value="${today()}" required></label><label class="full">Nota (opcional)<input name="nota"></label><div class="full"><button class="btn">Guardar pago</button></div></form></details>
-  <div style="margin-top:12px"><button type="button" class="btn ghost" id="cl">Cerrar</button> <button type="button" class="btn ghost" id="dl">Eliminar préstamo</button></div>
+  <div style="margin-top:12px"><button type="button" class="btn ghost" id="cl">Cerrar</button> <button type="button" class="btn ghost" id="ed">Editar préstamo</button></div>
   <h2 style="margin-top:14px">Pagos registrados</h2>${S.pays.filter(p=>p.loan===id).map(p=>`<div class="row"><div><span class="tag pagado">✓ Pagó</span> ${p.date} · <b style="color:var(--ok)">${fmt(p.amt)}</b>${p.nota?'<small>'+esc(p.nota)+'</small>':''}</div><span><a class="lk" data-rc="${p.id}">Recibo</a> · <a class="lk" data-pe="${p.id}">Editar</a> · <a class="lk" data-pd="${p.id}">Eliminar</a></span></div>`).join('')||'<p class="empty">Ninguno todavía.</p>'}`;
   if(!d.open)d.showModal();
   d.querySelectorAll('[data-rc]').forEach(a=>a.onclick=()=>receipt(a.dataset.rc));
@@ -329,7 +382,7 @@ function openLoan(id){
   $('#lob').onchange=e=>{l.obs=e.target.value;save()};
   $('#lmsg').onchange=e=>{l.msg=e.target.value;save();openLoan(id)};
   $('#cl').onclick=()=>{d.close();render()};
-  $('#dl').onclick=()=>{if(confirm('¿Eliminar este préstamo y sus pagos?')){S.loans=S.loans.filter(x=>x.id!==id);S.pays=S.pays.filter(p=>p.loan!==id);save();d.close();render()}};
+  $('#ed').onclick=()=>editLoan(id);
   const pay=a=>{if(Date.now()-LASTPAY<1500)return;LASTPAY=Date.now();const p=payNow(id,a);if(p){openLoan(id);render();receipt(p.id,true)}};
   const pn=$('#pn'),pa=$('#pa');if(pn)pn.onclick=()=>pay(+pn.dataset.a);if(pa)pa.onclick=()=>{if(confirm('¿Registrar el pago del saldo total de '+fmt(+pa.dataset.a)+'?'))pay(+pa.dataset.a)};
   d.querySelectorAll('[data-pr]').forEach(bt=>bt.onclick=()=>{const k=+bt.dataset.pr,need=s.rows.filter(r=>r.k<=k&&r.paid<r.tot-.5),amt=Math.round(need.reduce((a,r)=>a+r.tot-r.paid,0));if(!(amt>0))return;const m=need.length>1?'Para saldar la cuota '+k+' también se pagan las anteriores pendientes ('+need.map(r=>r.k).join(', ')+'). Total: '+fmt(amt)+'. ¿Registrar el pago?':'¿Registrar el pago de la cuota '+k+' por '+fmt(amt)+'?';if(confirm(m))pay(amt)});
@@ -455,7 +508,7 @@ function receipt(pid,fresh){
     bind:()=>{$('#cpr').onclick=()=>receiptPrint(pid);const cfr=$('#cfr');if(cfr)cfr.onclick=()=>finalReport(l.id);const u=$('#cud');if(u)u.onclick=()=>{if(!confirm('¿Deshacer este pago?'))return;S.pays=S.pays.filter(x=>x.id!==pid);save();LASTPAY=0;$('#rc').close();if($('#dlg').open)openLoan(l.id);render()}}});
 }
 /* Novedades (se muestran una vez por versión) */
-const NEWS=['Nuevo tipo de interés «Sobre saldo, % distinto por cuota (manual)»: la cuota 1 usa el % del menú y desde la cuota 2 escribes el % de cada cuota; el interés se calcula sobre el saldo que va quedando y la cuota baja.','Nuevo menú «Porcentaje por rango» al crear un préstamo: eliges el rango (10 %, 9 %, 8 %, 7 %, 6 %) o escribes el monto y la app pone el % mensual. En la lista de préstamos hay un filtro por porcentaje y rango. Se edita en Ajustes > Porcentajes por monto.','Recordatorio de cuota por WhatsApp visible en el detalle de cada préstamo activo (también en el celular).','Nuevo «Reporte por WhatsApp» en los préstamos finalizados: avisa al cliente con el total pagado, saldo $0 y cuotas pagadas, como imagen o texto.','Al crear un préstamo aparece la aprobación con el número de cuotas y todas las fechas de pago, lista para compartir como imagen.','Pago en un toque: la próxima cuota ya aparece lista, solo toca «Pagar».','El recibo de pago ahora es una imagen para compartir, con cuotas pagadas y pendientes.','La app descarga las mejoras cuando hay internet y te avisa para que las aceptes. Tus datos no se tocan.','Cada cuota tiene su botón «Pagar» y se muestra la mora por línea.','Respaldo: exportar e importar (fusionando o reemplazando) y copias internas con restauración.','Huella / Face ID para entrar, con la opción «Mantener la huella siempre activa» y «Reasignar huella».'];
+const NEWS=['Aviso al cliente un día antes: en el Panel, cada cobro de mañana tiene su botón de WhatsApp, queda marcado «Avisado hoy» y el botón «Avisar al siguiente» recorre los pendientes.','Alertas de mora: el Panel muestra cuántos clientes están en mora, cuánto deben y los días de atraso, y las pestañas Panel y Préstamos muestran una insignia roja con el número.','Nuevo botón «Editar» en cada préstamo, junto al estado: cambia cliente, monto, interés, cuotas, frecuencia, fecha, mora y notas sin perder los pagos. «Eliminar préstamo» ahora está dentro de la edición.','Nuevo tipo de interés «Sobre saldo, % distinto por cuota (manual)»: la cuota 1 usa el % del menú y desde la cuota 2 escribes el % de cada cuota; el interés se calcula sobre el saldo que va quedando y la cuota baja.','Nuevo menú «Porcentaje por rango» al crear un préstamo: eliges el rango (10 %, 9 %, 8 %, 7 %, 6 %) o escribes el monto y la app pone el % mensual. En la lista de préstamos hay un filtro por porcentaje y rango. Se edita en Ajustes > Porcentajes por monto.','Recordatorio de cuota por WhatsApp visible en el detalle de cada préstamo activo (también en el celular).','Nuevo «Reporte por WhatsApp» en los préstamos finalizados: avisa al cliente con el total pagado, saldo $0 y cuotas pagadas, como imagen o texto.','Al crear un préstamo aparece la aprobación con el número de cuotas y todas las fechas de pago, lista para compartir como imagen.','Pago en un toque: la próxima cuota ya aparece lista, solo toca «Pagar».','El recibo de pago ahora es una imagen para compartir, con cuotas pagadas y pendientes.','La app descarga las mejoras cuando hay internet y te avisa para que las aceptes. Tus datos no se tocan.','Cada cuota tiene su botón «Pagar» y se muestra la mora por línea.','Respaldo: exportar e importar (fusionando o reemplazando) y copias internas con restauración.','Huella / Face ID para entrar, con la opción «Mantener la huella siempre activa» y «Reasignar huella».'];
 function showNews(){const c=S.cfg;if(c.seenV===APPV)return;const first=!c.seenV&&!S.clients.length&&!S.loans.length;c.seenV=APPV;save();if(first)return;
   const r=$('#rc');document.body.classList.remove('rcp');r.onclose=null;r.innerHTML='<h2>✨ Novedades · versión '+APPV+'</h2><ul>'+NEWS.map(n=>'<li>'+esc(n)+'</li>').join('')+'</ul><p class="note">Tus clientes, préstamos, pagos y capital siguen intactos.</p><p><button class="btn" id="nx">Entendido</button></p>';if(!r.open)r.showModal();$('#nx').onclick=()=>r.close()}
 /* Actualizaciones: se descargan solas con internet y el cliente las acepta con un toque */

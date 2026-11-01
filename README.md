@@ -9,6 +9,9 @@ Aplicación web para controlar una cartera de préstamos: clientes, intereses, c
 - Préstamos con interés simple o sobre saldo, mora, observaciones y filtros por estado.
 - Cuotas en verde cuando se pagan, estado "Abonó" en pagos parciales y "Finalizado" al saldar la deuda.
 - Capital: aportes, retiros, dinero disponible para prestar, capital en la calle y ganancias.
+- Editar préstamo: botón «Editar» en cada fila de la lista (junto al estado) y en el detalle; cambia cliente, monto, interés, tipo, cuotas, frecuencia, fecha, mora y notas conservando los pagos. «Eliminar préstamo» está dentro de la edición y guarda antes una copia interna.
+- Alertas de mora: el Panel muestra clientes en mora, total vencido y días de atraso; insignia roja en las pestañas Panel y Préstamos.
+- Aviso al cliente un día antes: en el Panel, WhatsApp por cobro de mañana con marca «Avisado hoy» y botón «Avisar al siguiente».
 - Recordatorio de cuota por WhatsApp en la lista de préstamos y en el detalle de cada préstamo activo.
 - Aviso un día antes del cobro (notificación del navegador) y botón de WhatsApp para avisar al cliente, con mensaje opcional por préstamo.
 - Al crear un préstamo aparece su aprobación: valor aprobado, número de cuotas y todas las fechas de pago, como imagen para compartir (también desde «Ver aprobación» en el préstamo).
@@ -69,6 +72,8 @@ screenshot-*.png        Capturas para el diálogo de instalación
 - 3.10: nuevo menú «Porcentaje por rango» (porcentaje mensual según el monto del préstamo) al crear un préstamo, con la tabla editable en Ajustes > «Porcentajes por monto». No cambia el esquema de datos (`VER` 4): se guarda en la configuración y los datos existentes se conservan. `sw.js` pasa a `cartera-v17`.
 
 - 3.11: nuevo tipo de interés «Sobre saldo, % distinto por cuota (manual)»: la cuota 1 usa el % del menú o el escrito, y desde la cuota 2 se digita el % de cada cuota (interés sobre el saldo restante, capital parejo). Se guarda en el préstamo como `metodo:'saldov'` y `pcts`; no cambia el esquema de datos (`VER` 4) y los datos existentes se conservan. `sw.js` pasa a `cartera-v18`.
+
+- 3.12: botón «Editar» en cada préstamo (junto al estado), alertas de mora con insignia y días de atraso, y aviso por WhatsApp un día antes con marca «Avisado hoy». No cambia el esquema de datos (`VER` 4): los datos existentes se conservan. `sw.js` pasa a `cartera-v19`.
 
 ## Interruptor remoto (estado.json)
 
