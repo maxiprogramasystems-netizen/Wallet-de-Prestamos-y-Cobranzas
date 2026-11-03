@@ -14,7 +14,7 @@ Aplicación web para controlar una cartera de préstamos: clientes, intereses, c
 - Aviso al cliente un día antes: en el Panel, WhatsApp por cobro de mañana con marca «Avisado hoy» y botón «Avisar al siguiente».
 - Recordatorio de cuota por WhatsApp en la lista de préstamos y en el detalle de cada préstamo activo.
 - Aviso un día antes del cobro (notificación del navegador) y botón de WhatsApp para avisar al cliente, con mensaje opcional por préstamo.
-- Al crear un préstamo aparece su aprobación: valor aprobado, número de cuotas y todas las fechas de pago, como imagen para compartir (también desde «Ver aprobación» en el préstamo).
+- Al crear un préstamo aparece su aprobación: valor aprobado, número de cuotas y el detalle de cada cuota (fecha, saldo inicial, % del mes, interés, capital y valor de la cuota), como imagen para compartir o texto de WhatsApp (también desde «Ver aprobación» en el préstamo). No muestra el interés general ni el «Total a pagar».
 - Pago en un toque: la próxima cuota aparece ya lista con su valor y el botón «Pagar»; también «Pagar todo el saldo». El pago manual o abono queda en «Otro valor o abono».
 - «Reporte por WhatsApp» en préstamos finalizados: notifica al cliente que su préstamo terminó, con valor prestado, total pagado, saldo $0, cuotas pagadas y fecha de finalización (imagen para compartir o texto). Disponible en el detalle del préstamo, en la lista (enlace «Reporte») y en el recibo del último pago.
 - Recibo de pago como imagen para compartir (cuotas pagadas y pendientes, saldo y próximo pago), con opción de deshacer el pago recién hecho y de imprimir el recibo clásico.
@@ -74,6 +74,8 @@ screenshot-*.png        Capturas para el diálogo de instalación
 - 3.11: nuevo tipo de interés «Sobre saldo, % distinto por cuota (manual)»: la cuota 1 usa el % del menú o el escrito, y desde la cuota 2 se digita el % de cada cuota (interés sobre el saldo restante, capital parejo). Se guarda en el préstamo como `metodo:'saldov'` y `pcts`; no cambia el esquema de datos (`VER` 4) y los datos existentes se conservan. `sw.js` pasa a `cartera-v18`.
 
 - 3.12: botón «Editar» en cada préstamo (junto al estado), alertas de mora con insignia y días de atraso, y aviso por WhatsApp un día antes con marca «Avisado hoy». No cambia el esquema de datos (`VER` 4): los datos existentes se conservan. `sw.js` pasa a `cartera-v19`.
+
+- 3.13: la aprobación del préstamo que se envía al cliente trae el detalle de cada cuota: saldo inicial, % del mes, interés, capital y valor de la cuota (imagen y texto de WhatsApp), para que el cliente sepa cuánto es el interés de cada mes. Se quitan de esa aprobación la fila «Interés» general y «Total a pagar». Dentro de la app no cambia nada. No cambia el esquema de datos (`VER` 4): los datos existentes se conservan. `sw.js` pasa a `cartera-v20`.
 
 ## Interruptor remoto (estado.json)
 
